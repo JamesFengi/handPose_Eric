@@ -33,6 +33,7 @@ def demo_logo():
     print("/*********************************/\n")
 
 if __name__ == '__main__':
+
     demo_logo()
     parser = argparse.ArgumentParser(description= " DpCas : << Deep Learning Componentized Application System >> ")
     parser.add_argument('-app', type=int, default = 0,

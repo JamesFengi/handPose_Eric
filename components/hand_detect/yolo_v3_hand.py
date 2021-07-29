@@ -1,4 +1,4 @@
-#-*-coding:utf-8-*-
+# -*-coding:utf-8-*-
 # date:2021-03-09
 # Author: Eric.Lee
 # function: yolo v3 hand detect
@@ -18,8 +18,8 @@ from hand_detect.acc_model import acc_model
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 
-
 import random
+
 
 def show_model_param(model):
     params = list(model.parameters())
@@ -33,13 +33,15 @@ def show_model_param(model):
     print("----------------------")
     print("总参数数量和: " + str(k))
 
-def process_data(img, img_size=416):# 图像预处理
+
+def process_data(img, img_size=416):  # 图像预处理
     img, _, _, _ = letterbox(img, height=img_size)
     # Normalize RG25
     img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB
     img = np.ascontiguousarray(img, dtype=np.float32)  # uint8 to float32
     img /= 255.0  # 0 - 255 to 0.0 - 1.0
     return img
+
 
 def plot_one_box(x, img, color=None, label=None, line_thickness=None):
     # Plots one bounding box on image img
@@ -52,7 +54,8 @@ def plot_one_box(x, img, color=None, label=None, line_thickness=None):
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
         c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
         cv2.rectangle(img, c1, c2, color, -1)  # filled
-        cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [255, 55,90], thickness=tf, lineType=cv2.LINE_AA)
+        cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [255, 55, 90], thickness=tf, lineType=cv2.LINE_AA)
+
 
 def bbox_iou(box1, box2, x1y1x2y2=True):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
@@ -80,6 +83,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
     return inter_area / union_area  # iou
 
+
 def xywh2xyxy(x):
     # Convert bounding box format from [x, y, w, h] to [x1, y1, x2, y2]
     y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
@@ -90,7 +94,7 @@ def xywh2xyxy(x):
     return y
 
 
-def scale_coords(img_size, coords, img0_shape):# image size 转为 原图尺寸
+def scale_coords(img_size, coords, img0_shape):  # image size 转为 原图尺寸
     # Rescale x1, y1, x2, y2 from 416 to image size
     # print('coords     : ',coords)
     # print('img0_shape : ',img0_shape)
@@ -102,8 +106,9 @@ def scale_coords(img_size, coords, img0_shape):# image size 转为 原图尺寸
     coords[:, [0, 2]] -= pad_x
     coords[:, [1, 3]] -= pad_y
     coords[:, :4] /= gain
-    coords[:, :4] = torch.clamp(coords[:, :4], min=0)# 夹紧区间最小值不为负数
+    coords[:, :4] = torch.clamp(coords[:, :4], min=0)  # 夹紧区间最小值不为负数
     return coords
+
 
 def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
     """
@@ -201,6 +206,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
             output[image_i] = det_max[(-det_max[:, 4]).argsort()]  # sort
     return output
 
+
 def letterbox(img, height=416, augment=False, color=(127.5, 127.5, 127.5)):
     # Resize a rectangular image to a padded square
     shape = img.shape[:2]  # shape = [height, width]
@@ -225,7 +231,9 @@ def letterbox(img, height=416, augment=False, color=(127.5, 127.5, 127.5)):
 
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # padded square
     return img, ratio, dw, dh
-#---------------------------------------------------------
+
+
+# ---------------------------------------------------------
 # model_path = './coco_model/yolov3_coco.pt' # 检测模型路径
 # root_path = './test_images/'# 测试文件夹
 # model_arch = 'yolov3' # 模型类型
@@ -235,12 +243,12 @@ def letterbox(img, height=416, augment=False, color=(127.5, 127.5, 127.5)):
 # nms_thres = 0.5 # nms 阈值
 class yolo_v3_hand_model(object):
     def __init__(self,
-        model_path = './components/hand_detect/weights/latest_416-2021-02-19.pt',
-        model_arch = 'yolov3',
-        yolo_anchor_scale = 1.,
-        img_size=416,
-        conf_thres=0.16,
-        nms_thres=0.4,):
+                 model_path='./components/hand_detect/weights/latest_416-2021-02-19.pt',
+                 model_arch='yolov3',
+                 yolo_anchor_scale=1.,
+                 img_size=416,
+                 conf_thres=0.16,
+                 nms_thres=0.4, ):
         print("yolo v3 hand_model loading :  {}".format(model_path))
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda:0" if self.use_cuda else "cpu")
@@ -249,50 +257,50 @@ class yolo_v3_hand_model(object):
         self.num_classes = len(self.classes)
         self.conf_thres = conf_thres
         self.nms_thres = nms_thres
-        #-----------------------------------------------------------------------
+        # -----------------------------------------------------------------------
         weights = model_path
         if "tiny" in model_arch:
-            a_scalse = 416./img_size*yolo_anchor_scale
-            anchors=[(10, 14), (23, 27), (37, 58), (81, 82), (135, 169), (344, 319)]
-            anchors_new = [ (int(anchors[j][0]/a_scalse),int(anchors[j][1]/a_scalse)) for j in range(len(anchors)) ]
+            a_scalse = 416. / img_size * yolo_anchor_scale
+            anchors = [(10, 14), (23, 27), (37, 58), (81, 82), (135, 169), (344, 319)]
+            anchors_new = [(int(anchors[j][0] / a_scalse), int(anchors[j][1] / a_scalse)) for j in range(len(anchors))]
 
-            model = Yolov3Tiny(self.num_classes,anchors = anchors_new)
+            model = Yolov3Tiny(self.num_classes, anchors=anchors_new)
         else:
-            a_scalse = 416./img_size
-            anchors=[(10,13), (16,30), (33,23), (30,61), (62,45), (59,119), (116,90), (156,198), (373,326)]
-            anchors_new = [ (int(anchors[j][0]/a_scalse),int(anchors[j][1]/a_scalse)) for j in range(len(anchors)) ]
-            model = Yolov3(self.num_classes,anchors = anchors_new)
-        #-----------------------------------------------------------------------
+            a_scalse = 416. / img_size
+            anchors = [(10, 13), (16, 30), (33, 23), (30, 61), (62, 45), (59, 119), (116, 90), (156, 198), (373, 326)]
+            anchors_new = [(int(anchors[j][0] / a_scalse), int(anchors[j][1] / a_scalse)) for j in range(len(anchors))]
+            model = Yolov3(self.num_classes, anchors=anchors_new)
+        # -----------------------------------------------------------------------
 
         self.model = model
         # show_model_param(self.model)# 显示模型参数
 
         # print('num_classes : ',self.num_classes)
 
-        self.device = select_device() # 运行硬件选择
+        self.device = select_device()  # 运行硬件选择
         self.use_cuda = torch.cuda.is_available()
         # Load weights
-        if os.access(weights,os.F_OK):# 判断模型文件是否存在
+        if os.access(weights, os.F_OK):  # 判断模型文件是否存在
             self.model.load_state_dict(torch.load(weights, map_location=lambda storage, loc: storage)['model'])
         else:
             print('------- >>> error : model not exists')
             return False
         #
-        self.model.eval()#模型设置为 eval
-        acc_model('',self.model)
+        self.model.eval()  # 模型设置为 eval
+        acc_model('', self.model)
         self.model = self.model.to(self.device)
 
-    def predict(self, img_,vis):
+    def predict(self, img_, vis):
         with torch.no_grad():
             t = time.time()
             img = process_data(img_, self.img_size)
             t1 = time.time()
             img = torch.from_numpy(img).unsqueeze(0).to(self.device)
 
-            pred, _ = self.model(img)#图片检测
+            pred, _ = self.model(img)  # 图片检测
 
             t2 = time.time()
-            detections = non_max_suppression(pred, self.conf_thres, self.nms_thres)[0] # nms
+            detections = non_max_suppression(pred, self.conf_thres, self.nms_thres)[0]  # nms
             t3 = time.time()
             # print("t3 time:", t3)
 
@@ -307,8 +315,8 @@ class yolo_v3_hand_model(object):
             output_dict_ = []
             for *xyxy, conf, cls_conf, cls in detections:
                 label = '%s %.2f' % (self.classes[0], conf)
-                x1,y1,x2,y2 = xyxy
-                output_dict_.append((float(x1),float(y1),float(x2),float(y2),float(conf.item())))
+                x1, y1, x2, y2 = xyxy
+                output_dict_.append((float(x1), float(y1), float(x2), float(y2), float(conf.item())))
                 if vis:
-                    plot_one_box(xyxy, img_, label=label, color=(0,175,255), line_thickness = 2)
+                    plot_one_box(xyxy, img_, label=label, color=(0, 175, 255), line_thickness=2)
             return output_dict_
